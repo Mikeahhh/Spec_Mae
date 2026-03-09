@@ -91,7 +91,7 @@ def fig_roc_per_snr(
         if len(np.unique(c_lbl)) < 2:
             continue
         fprs, tprs, _ = compute_roc(c_lbl, c_sc)
-        auc   = float(np.trapz(tprs, fprs))
+        auc   = float(np.trapezoid(tprs, fprs))
         color = SNR_COLORS.get(snr, "gray")
         ax.plot(fprs, tprs, linewidth=1.8, color=color,
                 label=f"{snr}  (AUC={auc:.3f})")

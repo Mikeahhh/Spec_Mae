@@ -359,7 +359,7 @@ def main() -> None:
     p.add_argument("--num_workers",  type=int,   default=0)
     p.add_argument("--amp",          action="store_true")
     p.add_argument("--seed",         type=int,   default=SEED)
-    args = parse_args = p.parse_args()
+    args = p.parse_args()
 
     out_dir  = Path(args.out_dir)
     ckpt_dir = out_dir / "checkpoints"

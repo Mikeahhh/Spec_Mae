@@ -63,7 +63,7 @@ def load_model(
     ckpt_path: Path,
     device:    torch.device,
 ) -> tuple[SpecMAE, float, AudioConfig]:
-    ckpt       = torch.load(ckpt_path, map_location=device)
+    ckpt       = torch.load(ckpt_path, map_location=device, weights_only=False)
     mask_ratio = float(ckpt.get("mask_ratio", 0.75))
     cfg_dict   = ckpt.get("audio_cfg", {})
     cfg = AudioConfig(

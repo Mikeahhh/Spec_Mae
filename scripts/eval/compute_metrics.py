@@ -43,7 +43,7 @@ except ImportError:
 def _trapezoidal_auc(fprs: np.ndarray, tprs: np.ndarray) -> float:
     """Trapezoidal rule AUC (sorted by fpr ascending)."""
     order = np.argsort(fprs)
-    return float(np.trapz(tprs[order], fprs[order]))
+    return float(np.trapezoid(tprs[order], fprs[order]))
 
 
 def compute_roc(
@@ -93,7 +93,7 @@ def compute_pauc(
     mask     = fprs <= max_fpr
     if mask.sum() < 2:
         return float("nan")
-    pauc_raw = float(np.trapz(tprs[mask], fprs[mask]))
+    pauc_raw = float(np.trapezoid(tprs[mask], fprs[mask]))
     return pauc_raw / max_fpr      # normalise to [0, 1]
 
 

@@ -162,6 +162,7 @@ def run_cv_for_mask_ratio(
     cfg:         AudioConfig,
     device:      torch.device,
     n_epochs:    int,
+    num_workers: int = 0,
     verbose:     bool = True,
 ) -> list[dict]:
     """
@@ -185,7 +186,7 @@ def run_cv_for_mask_ratio(
 
         train_loader, val_loader = make_kfold_loaders(
             all_files, train_idx, val_idx, cfg=cfg,
-            batch_size=BATCH_SIZE, num_workers=0,
+            batch_size=BATCH_SIZE, num_workers=num_workers,
         )
 
         set_seed(SEED + k)
@@ -244,6 +245,7 @@ def train_final_model(
     device:          torch.device,
     out_dir:         Path,
     n_epochs:        int,
+    num_workers:     int = 0,
     verbose:         bool = True,
 ) -> Path:
     """
@@ -257,7 +259,7 @@ def train_final_model(
 
     train_loader, val_loader = make_kfold_loaders(
         all_files, trn_idx, val_idx, cfg=cfg,
-        batch_size=BATCH_SIZE, num_workers=0,
+        batch_size=BATCH_SIZE, num_workers=num_workers,
     )
 
     set_seed(SEED)
@@ -464,6 +466,7 @@ def main() -> None:
                 cfg=cfg,
                 device=device,
                 n_epochs=CV_EPOCHS,
+                num_workers=args.num_workers,
                 verbose=True,
             )
             all_fold_results.extend(fold_results)
@@ -538,6 +541,7 @@ def main() -> None:
         device=device,
         out_dir=out_dir,
         n_epochs=FINAL_EPOCHS,
+        num_workers=args.num_workers,
         verbose=True,
     )
 

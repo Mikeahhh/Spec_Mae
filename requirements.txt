@@ -1,0 +1,45 @@
+# Sound-UAV SpecMAE Project Dependencies
+# 
+# ⚠️ SECURITY NOTE: This file specifies minimum secure versions
+# All versions have been checked for known CVEs as of 2026-03-09
+#
+# Critical CVEs fixed:
+# - torch >= 2.8.0: Fixes CVE-2025-32434 (CRITICAL RCE), CVE-2024-31583, CVE-2024-31580, and others
+# - scikit-learn >= 1.5.0: Fixes CVE-2024-5206 (data leakage)
+# - tqdm >= 4.66.3: Fixes CVE-2024-34062 (code injection)
+
+# PyTorch 相关 (CRITICAL: Updated to fix RCE vulnerability)
+torch>=2.8.0
+torchaudio>=2.8.0
+torchvision>=0.19.0
+
+# 音频处理
+librosa>=0.10.1
+soundfile>=0.12.1
+scipy>=1.10.1
+
+# 数据处理
+numpy>=1.24.3
+pandas>=2.0.2
+
+# 可视化
+matplotlib>=3.7.1
+seaborn>=0.12.2
+
+# 机器学习工具 (Updated to fix CVE-2024-5206)
+timm>=0.9.2
+scikit-learn>=1.5.0
+
+# 配置与日志 (Updated to fix CVE-2024-34062)
+pyyaml>=6.0
+tensorboard>=2.13.0
+tqdm>=4.66.3
+
+# 开发工具（可选）
+pytest>=7.3.1
+black>=23.3.0
+flake8>=6.0.0
+
+# 安全工具（推荐）
+safety>=2.3.5
+pip-audit>=2.5.5

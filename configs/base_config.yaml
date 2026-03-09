@@ -1,0 +1,40 @@
+# Base Configuration for Sound-UAV SpecMAE
+# 所有场景共享的基础配置
+
+# Model Architecture
+model:
+  name: "SpecMAE"
+  type: "vit_base"
+  encoder:
+    embed_dim: 768
+    depth: 12
+    num_heads: 12
+  decoder:
+    embed_dim: 512
+    depth: 4
+    num_heads: 8
+  patch:
+    size: 16
+    stride: 16
+  mask:
+    ratio: 0.75
+
+# Audio Processing
+audio:
+  sample_rate: 48000
+  duration: 1.0
+  feature:
+    n_mels: 128
+    n_fft: 1024
+    hop_length: 480
+
+# Training
+training:
+  epochs: 100
+  batch_size: 32
+  optimizer:
+    type: "AdamW"
+    lr: 1.0e-4
+
+# Seed
+seed: 42

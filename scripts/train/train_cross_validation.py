@@ -91,6 +91,46 @@ def get_lr(epoch: int, n_epochs: int) -> float:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  Spectrogram augmentation (combats overfitting on small datasets)
+# ═══════════════════════════════════════════════════════════════════════════
+
+AUGMENT: bool = False   # toggled via --augment CLI flag
+
+def _augment_batch(specs: torch.Tensor) -> torch.Tensor:
+    """
+    Apply lightweight augmentation to a batch of log-Mel spectrograms.
+
+    Applied *before* the MAE forward pass (the MAE's random masking provides
+    further stochastic augmentation on top of this).
+
+    Augmentations (all in-place friendly, no extra allocations where possible):
+        1. Random time roll   — shift each sample ±12.5 % along time axis
+        2. Random gain jitter — multiplicative scale ∈ [0.9, 1.1]
+        3. Gaussian noise     — σ = 0.02 (small relative to log-Mel range)
+    """
+    if not AUGMENT:
+        return specs
+
+    B, C, F, T = specs.shape
+
+    # 1. Random time roll (circular shift) per sample
+    max_shift = max(1, T // 8)
+    for i in range(B):
+        shift = int(torch.randint(-max_shift, max_shift + 1, (1,)).item())
+        if shift != 0:
+            specs[i] = torch.roll(specs[i], shifts=shift, dims=-1)
+
+    # 2. Random gain jitter  (per-sample scalar)
+    gain = 0.9 + 0.2 * torch.rand(B, 1, 1, 1, device=specs.device)
+    specs = specs * gain
+
+    # 3. Small additive Gaussian noise
+    specs = specs + 0.02 * torch.randn_like(specs)
+
+    return specs
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  One epoch helpers
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -112,6 +152,7 @@ def train_one_epoch(
     total_loss = 0.0
     for specs, _ in loader:
         specs = specs.to(device, non_blocking=True)
+        specs = _augment_batch(specs)
         optimizer.zero_grad(set_to_none=True)
 
         loss, _, _ = model(specs, mask_ratio=mask_ratio)
@@ -385,6 +426,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--norm_samples", type=int,   default=500,
                    help="Number of clips sampled for auto_norm estimation")
     p.add_argument("--seed",         type=int,   default=SEED)
+    p.add_argument("--augment",      action="store_true",
+                   help="Enable spectrogram augmentation (time-roll, gain jitter, noise) "
+                        "to reduce overfitting on small datasets")
+    p.add_argument("--weight_decay", type=float, default=WEIGHT_DECAY,
+                   help="AdamW weight decay")
+    p.add_argument("--lr",           type=float, default=LR,
+                   help="Peak learning rate")
+    p.add_argument("--warmup_epochs", type=int,  default=WARMUP_EPOCHS,
+                   help="Number of linear warmup epochs")
     return p.parse_args()
 
 
@@ -397,11 +447,15 @@ def main() -> None:
     out_dir  = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    global CV_EPOCHS, FINAL_EPOCHS, BATCH_SIZE, SEED
+    global CV_EPOCHS, FINAL_EPOCHS, BATCH_SIZE, SEED, WEIGHT_DECAY, AUGMENT, LR, WARMUP_EPOCHS
     CV_EPOCHS    = args.cv_epochs
     FINAL_EPOCHS = args.final_epochs
     BATCH_SIZE   = args.batch_size
     SEED         = args.seed
+    WEIGHT_DECAY = args.weight_decay
+    AUGMENT      = args.augment
+    LR           = args.lr
+    WARMUP_EPOCHS = args.warmup_epochs
 
     set_seed(SEED)
     device   = get_device(verbose=True)

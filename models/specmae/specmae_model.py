@@ -280,23 +280,31 @@ class SpecMAE(nn.Module):
         imgs:       torch.Tensor,
         mask_ratio: Optional[float] = None,
         n_passes:   int             = 1,
+        score_mode: str             = "mean",
+        top_k_ratio: float          = 0.2,
     ) -> torch.Tensor:
         """
         Per-sample anomaly score for sentinel-mode inference.
 
-        Runs the model with the training mask ratio and computes the mean
-        reconstruction error over ALL patches (not just masked ones).
+        Runs the model with the training mask ratio and computes the
+        reconstruction error, aggregated via *score_mode*.
         Averaged over `n_passes` independent random masks for stability.
 
         A high score means the model cannot reconstruct the input → anomaly.
         A low score means the content matches the learned normal manifold.
 
         Args:
-            imgs:       (B, 1, F, T) spectrogram batch.
-            mask_ratio: Override default mask ratio (None = use training ratio).
-            n_passes:   Number of random-mask passes to average.
-                        n_passes=1 (default) is sufficient for online detection;
-                        n_passes≥5 gives more stable threshold calibration.
+            imgs:        (B, 1, F, T) spectrogram batch.
+            mask_ratio:  Override default mask ratio (None = use training ratio).
+            n_passes:    Number of random-mask passes to average.
+            score_mode:  Patch aggregation strategy:
+                         "mean"  — mean MSE over all patches (baseline).
+                         "max"   — max single-patch MSE (most sensitive to
+                                   localised anomalies, but noisy).
+                         "top_k" — mean of top-k% worst-reconstructed patches
+                                   (best trade-off for low-SNR detection).
+            top_k_ratio: Fraction of patches used when score_mode="top_k"
+                         (default 0.2 = top 20%).
 
         Returns:
             scores: (B,) per-sample anomaly scores (MSE, non-negative).
@@ -324,7 +332,16 @@ class SpecMAE(nn.Module):
             pred = self.decoder(latent, ids_restore, n_f, n_t)   # (B, N, p²)
 
             mse = (pred - target_norm) ** 2                      # (B, N, p²)
-            accumulated += mse.mean(dim=(1, 2))                  # (B,)
+            patch_mse = mse.mean(dim=-1)                         # (B, N)
+
+            if score_mode == "max":
+                accumulated += patch_mse.max(dim=-1).values      # (B,)
+            elif score_mode == "top_k":
+                k = max(1, int(patch_mse.shape[-1] * top_k_ratio))
+                topk_vals, _ = patch_mse.topk(k, dim=-1)         # (B, k)
+                accumulated += topk_vals.mean(dim=-1)            # (B,)
+            else:  # "mean"
+                accumulated += patch_mse.mean(dim=-1)            # (B,)
 
         scores = accumulated / n_passes
 

@@ -98,6 +98,8 @@ def run_inference(
     device:     torch.device,
     mask_ratio: float,
     n_passes:   int = 1,
+    score_mode: str = "mean",
+    top_k_ratio: float = 0.2,
 ) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
     """
     Run the model over the full test loader.
@@ -123,6 +125,7 @@ def run_inference(
         specs  = specs.to(device, non_blocking=True)
         scores = model.compute_anomaly_score(
             specs, mask_ratio=mask_ratio, n_passes=n_passes,
+            score_mode=score_mode, top_k_ratio=top_k_ratio,
         ).cpu().numpy()
 
         for i in range(len(scores)):
@@ -248,6 +251,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--num_workers", type=int, default=0)
     p.add_argument("--n_passes",    type=int, default=1,
                    help="Number of stochastic masking passes for score averaging")
+    p.add_argument("--score_mode",  default="mean",
+                   choices=["mean", "max", "top_k"],
+                   help="Patch aggregation: mean (all patches), max (worst patch), "
+                        "top_k (top-k%% worst patches — best for low SNR)")
+    p.add_argument("--top_k_ratio", type=float, default=0.2,
+                   help="Fraction of patches used for top_k mode (0.2 = top 20%%)")
     p.add_argument("--max_fpr",     type=float, default=0.1,
                    help="FPR upper bound for pAUC (DCASE: 0.1)")
     return p.parse_args()
@@ -305,9 +314,10 @@ def main() -> None:
           f"total: {len(test_ds)}")
 
     # ── Inference ──────────────────────────────────────────────────────────
-    print("\n  Running inference...")
+    print(f"\n  Running inference (score_mode={args.score_mode}) ...")
     labels, scores, snr_tags, filenames = run_inference(
         model, test_loader, device, mask_ratio, n_passes=args.n_passes,
+        score_mode=args.score_mode, top_k_ratio=args.top_k_ratio,
     )
 
     # ── Save raw scores ────────────────────────────────────────────────────

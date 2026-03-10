@@ -29,7 +29,15 @@ def load_audio(file_path: str, sr: int = 48000) -> Tuple[np.ndarray, int]:
         audio: 音频数据 (n_samples,)
         sr: 采样率
     """
-    audio, orig_sr = librosa.load(file_path, sr=None, mono=True)
+    # Use soundfile first (handles more WAV codecs than audioread)
+    try:
+        audio, orig_sr = sf.read(file_path, dtype="float32")
+    except Exception:
+        audio, orig_sr = librosa.load(file_path, sr=None, mono=True)
+
+    # Convert stereo to mono
+    if audio.ndim == 2:
+        audio = audio.mean(axis=1)
 
     # 重采样到目标采样率
     if orig_sr != sr:
